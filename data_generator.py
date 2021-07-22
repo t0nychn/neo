@@ -33,6 +33,8 @@ class QuickScrape:
     """Quick scraper that goes 2 links deep into one site and collects all text in result attribute"""
     # limit for number of pages
     PAGE_LIMIT = 15
+    # rest time in seconds after 429 request
+    NO_SPAM = 120
 
     # initialize scraper with href1 (initial (1st) link)
     def __init__(self, href1):
@@ -59,8 +61,12 @@ class QuickScrape:
                 href = self.href1 + href
             print(f"Visiting: {href}...")
             response = requests.get(href, timeout=5)
+            # don't spam
+            if int(response.status_code) == 429:
+                print(f"429 response received for {href}/nRetrying in {QuickScrape.NO_SPAM/60} minutes...")
+                time.sleep(QuickScrape.NO_SPAM)
             # account for bad requests
-            if int(response.status_code) > 400:
+            elif int(response.status_code) > 400:
                 print(f"Bad request for {href}: {response.status_code}")
             else:
                 soup = BeautifulSoup(response.text, 'html.parser')
@@ -83,7 +89,7 @@ class QuickScrape:
                 return
             else:
                 # cooldown
-                time.sleep(2)
+                time.sleep(5)
                 self.parse(href2)
 
 
