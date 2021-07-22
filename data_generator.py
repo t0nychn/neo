@@ -5,16 +5,12 @@ to have enough data with which to write regex tests. Output will be saved to sit
 Set up redis server:
 $redis-server
 
-Set up celery worker:
-$celery -A data_generator worker -P eventlet --concurrency 1000 --purge
-
-Run file:
-$python data_generator.py
+Set up celery worker to run file:
+$celery -A data_generator worker -P eventlet --concurrency 1000
 """
 
 import pandas as pd
 from celery import Celery
-from celery.result import AsyncResult
 from bs4 import BeautifulSoup
 from decouple import config
 import requests
@@ -22,8 +18,11 @@ import time
 
 
 # load data
-reader = pd.read_csv('sites_list/main.csv', iterator=True)
-df = reader.get_chunk(5)
+reader = pd.read_csv('sites_list/main.csv', encoding='utf-8', iterator=True)
+df = reader.get_chunk(6)
+
+# drop rows with missing urls
+df = df.dropna()
 
 
 # initiate celery instance
@@ -36,7 +35,7 @@ class QuickScrape:
 
     # initialize scraper with href1 (initial (1st) link)
     def __init__(self, href1):
-        self.href1 = href1
+        self.href1 = str(href1)
         self.results = []
     
     # href parser using bs4
@@ -73,27 +72,28 @@ class QuickScrape:
             self.parse(href2)
 
 
-# create new content column in df
-df['content'] = df['url']
-
-
 # define celery task to reduce scraping bottleneck (i.e. make each QuickScrape instance concurrent)
 # this effectively has runtime O(n) where n is the max number of secondary links for any site
+contents = []
 @app.task
 def scrape(index):
     url = df.iloc[index]['url']
     scraper = QuickScrape(url)
     scraper.execute()
     # save in df
-    df.iloc[index]['content'] = scraper.results
+    contents.append(scraper.results)
     print(f"Scraped {url}!")
-    # write df (quick pd method)
-    df.to_csv('sites_data/initial.csv', index=False)
+    print(len(contents))
+    # write df once all sites scraped (quick pd method)
+    if len(contents) == len(df):
+        df['contents'] = contents
+        df.to_csv('sites_data/initial.csv', encoding='utf-8-sig', index=False)
+        print("Results exported to CSV!")
     
 
 # output function
 def run():
-    for index, row in df.iterrows():
+    for index in range(len(df)):
         # call delay to activate concurrency
         scrape.delay(index)
 
