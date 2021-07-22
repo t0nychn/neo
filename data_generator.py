@@ -31,6 +31,8 @@ app = Celery('data_generator', broker=config('BROKER_URL'))
 # define scraper
 class QuickScrape:
     """Quick scraper that goes 2 links deep into one site and collects all text in result attribute"""
+    # limit for number of pages
+    PAGE_LIMIT = 15
 
     # initialize scraper with href1 (initial (1st) link)
     def __init__(self, href1):
@@ -47,11 +49,15 @@ class QuickScrape:
     # all together now
     def parse(self, href):
         # account for bad links and prevent scraper following external links
-        if self.href1 not in str(href):
+        if (self.href1 not in href and href[0] != '/') or len(href) < 2:
             print(f"Bad/external link: {href}")
         else:
-            # cooldown
-            time.sleep(2)
+            # account for shortened links
+            if self.href1[-1] == '/' and href[0] == '/':
+                href = self.href1 + href[1:]
+            elif self.href1[-1] != '/' and href[0] == '/':
+                href = self.href1 + href
+            print(f"Visiting: {href}...")
             response = requests.get(href, timeout=5)
             # account for bad requests
             if int(response.status_code) > 400:
@@ -65,10 +71,20 @@ class QuickScrape:
 
     # iterate parse function 2 links deep
     def execute(self):
-        print(f"Visiting primary link: {self.href1}...")
+        counter = 0
         for href2 in self.parse(self.href1):
-            print(f"Visiting secondary link: {href2}...")
-            self.parse(href2)
+            # account for links back to home
+            if self.href1 == href2:
+                print(f"Duplicate request: {href2}")
+            counter += 1
+            if counter > QuickScrape.PAGE_LIMIT:
+                print(f'Too many pages at {self.href1}!')
+                # end function
+                return
+            else:
+                # cooldown
+                time.sleep(2)
+                self.parse(href2)
 
 
 # create new df of scraped values from scratch
