@@ -7,6 +7,8 @@ $redis-server
 
 Set up celery worker to run file:
 $celery -A data_generator worker -P eventlet --concurrency 1000
+
+--purge flag can be used to discontinue any messages if previous worker interrupted before finishing
 """
 
 import pandas as pd
@@ -17,12 +19,9 @@ import requests
 import time
 
 
-# load data
+# load data & drop rows with missing urls
 reader = pd.read_csv('sites_list/main.csv', encoding='utf-8', iterator=True)
-df = reader.get_chunk(6)
-
-# drop rows with missing urls
-df = df.dropna()
+df = reader.get_chunk(100).dropna()
 
 
 # initiate celery instance
@@ -72,23 +71,31 @@ class QuickScrape:
             self.parse(href2)
 
 
+# create new df of scraped values from scratch
+id = []
+name = []
+url = []
+content = []
+
 # define celery task to reduce scraping bottleneck (i.e. make each QuickScrape instance concurrent)
 # this effectively has runtime O(n) where n is the max number of secondary links for any site
-contents = []
 @app.task
 def scrape(index):
-    url = df.iloc[index]['url']
-    scraper = QuickScrape(url)
+    href1 = df.iloc[index]['url']
+    scraper = QuickScrape(href1)
     scraper.execute()
-    # save in df
-    contents.append(scraper.results)
-    print(f"Scraped {url}!")
-    print(len(contents))
-    # write df once all sites scraped (quick pd method)
-    if len(contents) == len(df):
-        df['contents'] = contents
-        df.to_csv('sites_data/initial.csv', encoding='utf-8-sig', index=False)
-        print("Results exported to CSV!")
+    # save in df if managed to get something
+    if scraper.results:
+        id.append(df.iloc[index]['id'])
+        name.append(df.iloc[index]['name'])
+        url.append(href1)
+        content.append(scraper.results)
+    print(f"Scraped {href1}! ({len(content)}/{len(df)})")
+    # this will slightly slow runtime but 80-20 approach for now
+    # necessary to prevent celery from writing to file too early
+    new_df = pd.DataFrame({'id':id, 'name':name, 'url':url, 'content':content})
+    # save to csv
+    new_df.to_csv('sites_data/initial.csv', encoding='utf-8-sig', index=False)
     
 
 # output function
