@@ -2,11 +2,10 @@
 This file is for pulling textual data from a sample of 100 websites from csv/input.csv
 to have enough data with which to write regex tests. Output will be saved to sites_data/initial.csv
 
-Set up redis server:
-$redis-server
+(Before running first set up the message broker (e.g. Redis) in your .env file.)
 
-Set up celery worker to run file:
-$celery -A data_generator worker -P eventlet --concurrency 1000
+Then set up Celery worker to run file:
+$ celery -A data_generator worker -P eventlet --concurrency 100
 
 --purge flag can be used to discontinue any messages if previous worker interrupted before finishing
 """
@@ -43,9 +42,10 @@ class QuickScrape:
     
     # href parser using bs4
     def find_href(self, soup):
-        hrefs = []
+        # set for faster runtime and remove duplicates
+        hrefs = set()
         for tag in soup.find_all('a', href=True):
-            hrefs.append(tag.get('href'))
+            hrefs.add(tag.get('href'))
         return hrefs
 
     # all together now
