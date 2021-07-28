@@ -9,7 +9,7 @@ class Tests:
     
     def test_special_args(self):
         # test for codec interruptions
-        assert find_freebies('this product is a â\x80\x93 gift ') == {'his product is a â\x80\x93 gift '}
+        assert find_freebies('this product is a â\x80\x93 gift ') == {'is product is a â\x80\x93 gift '}
 
     def test_normal_args(self):
         # test for case insensitivity
@@ -18,7 +18,7 @@ class Tests:
         assert find_freebies('product free for first month for non-members, and free for two months for subscribers') == {' non-members, and free for two months for ', 'product free for first month for'}
         # test to avoid gluten
         # function may exclude gluten free gifts but hopefully not too many of those
-        assert find_freebies('gluten free bread') is None
+        assert find_freebies('gluten free bread ................. free range egg.......... gluten free range bread') is None
         assert find_freebies('our cafe serves muffins free from gluten') is None
         # test to find vouchers
         assert find_freebies('get our new voucher') == {'get our new voucher'}

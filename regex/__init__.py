@@ -37,24 +37,26 @@ def find_freebies(text):
     # aim is to also return context 20 characters before and after mention of free, gift or voucher
     # prevent parsing words with 'free' and 'gift' as root (e.g. freedom or gifted) but allow for giftcard
     pattern1 = r".{0,19}\Wfree\W.{0,19}|.{0,20}voucher.{0,20}"
-    pattern2 = r".{0,20}giftcard.{0,20}|.{0,20}\Wgift\W.{0,29}"
+    pattern2 = r".{0,20}giftcard.{0,20}|.{0,19}\Wgift\W.{0,19}"
     result = re.findall(pattern1, text, re.I) + re.findall(pattern2, text, re.I)
 
     if result:
         # filter for mentions of gluten & range (common word associated with free) and 'gift wrap'
         # create new set of items to be removed (can't remove iteratively since index positions change)
-        remove = set()
+        filter = set()
+        # remove duplicates before operating
+        result = set(result)
         for e in result:
             # account for case differences by creating lowercase comparison text
             comp = e.lower()
             if ('gift' and 'wrap') in comp:
-                remove.add(e)
-            if 'gluten' in comp or 'range' in comp:
-                remove.add(e)
-        for e in remove:
-            result.remove(e)
+                filter.add(e)
+            elif 'gluten' in comp or 'range' in comp:
+                filter.add(e)
+        # remove overlapping values
+        result.difference_update(filter)
         if len(result) > 0:
-            return set(result)
+            return result
         else:
             return
     else:
