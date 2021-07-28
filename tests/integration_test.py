@@ -11,13 +11,15 @@ import math
 
 # define parsing logic
 def parse(text):
-    """Parses a string input and returns deals found by regex module with confidence score
+    """Parses a string input and returns deals found by regex modules with confidence/compatibility score
 
     On calculating score:
-    • discounts are the most indicative of potential offer so score is weighted 2x that of freebies
+    • discounts are the most indicative of potential offer so score is weighted 4x that of freebies
     • sigma_d is total unique discounts found
-    • sigma_f is total unique 'free' matches found
-    • logging the sum of 4 : 1 sigma_d : sigma_f weighting means single mentions of 'free' or 'gift' produce score of zero, but single mentions of discounts produce score of 6
+    • sigma_f is total unique freeby matches found containing 'free'/'gift'/'voucher' (check out regex package to see additional checks in place)
+    • logging the weighted sum of sigma_d and sigma_f means single mentions of 'free' or 'gift' produce score of zero, but single mentions of discounts produce score of 16
+    
+    After trialling on the sample in sites_data/initial.csv, I think a score above 25 is good indication the shop is likely to adopt new CRM tech
 
     Args:
         text (str): String to be parsed
