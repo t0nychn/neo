@@ -13,13 +13,12 @@ import math
 def parse(text):
     """Parses a string input and returns deals found by regex modules with confidence/compatibility score
 
-    On calculating score:
-    • discounts are the most indicative of potential offer so score is weighted 4x that of freebies
+    Updated score calculation (02/08/2021):
+    • discounts are the most indicative of potential offer so score is weighted 9x that of subs
+    • freebies are more useful than subscriptions so weighted 3x that of subs
     • sigma_d is total unique discounts found
     • sigma_f is total unique freeby matches found containing 'free'/'gift'/'voucher' (check out regex package to see additional checks in place)
-    • logging the weighted sum of sigma_d and sigma_f means single mentions of 'free' or 'gift' produce score of zero, but single mentions of discounts produce score of 16
-    
-    After trialling on the sample in sites_data/initial.csv, I think a score above 25 is good indication the shop is likely to adopt new CRM tech
+    • sigma_s is total unique subs found
 
     Args:
         text (str): String to be parsed
@@ -29,24 +28,18 @@ def parse(text):
     """
     discounts = find_discounts(text)
     freebies = find_freebies(text)
+    subs = find_subs(text)
 
-    if discounts:
-        sigma_d = len(discounts)
-    else:
-        sigma_d = 0
-    if freebies:
-        sigma_f = len(freebies)
-    else:
-        # ensure no math error (score will still be zero)
-        sigma_f = 1
-    score = 10 * math.log(4 * sigma_d + sigma_f)
+    sigma_d = (len(discounts) if discounts else 0)
+    sigma_f = (len(freebies) if freebies else 0)
+    sigma_s = (len(subs) if subs else 0)
 
-    return {'score': int(score), 'discounts': discounts, 'freebies': freebies}
+    score = 9 * sigma_d + 3 * sigma_f + sigma_s
+
+    return {'score': int(score), 'discounts': discounts, 'freebies': freebies, 'subs': subs}
 
 
 df = pd.read_csv('sites_data/initial.csv', index_col='id', encoding='utf-8')
-# clean df of unwanted escape \n characters
-df['content'] = df['content'].apply(lambda x: x.replace('\n', ''))
 
 # iterate through df to get array of dicts
 parsed = df['content'].apply(lambda x: parse(x))
@@ -55,15 +48,18 @@ parsed = df['content'].apply(lambda x: parse(x))
 scores = []
 discounts = []
 freebies = []
+subs = []
 for result in parsed:
     scores.append(result['score'])
     discounts.append(result['discounts'])
     freebies.append(result['freebies'])
+    subs.append(result['subs'])
 
 # create new columns from parsed lists
 df['score'] = scores
 df['discounts'] = discounts
 df['freebies'] = freebies
+df['subs'] = subs
 
 # drop contents column to replicate real csv file
 df.drop('content', axis=1, inplace=True)
