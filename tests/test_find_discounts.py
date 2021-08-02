@@ -26,7 +26,7 @@ class Tests:
         assert find_discounts('5% Discount') == {'5% Discount'}
         assert find_discounts('10% discount') == {'10% discount'}
         # test multiple instances in text
-        assert find_discounts('20%off 50 % off') == {'20%off', '50 % off'}
+        assert find_discounts('20%off 50 % discount') == {'20%off', '50 % discount'}
         assert find_discounts('£20 off and a further 50% off') == {'£20 off', '50% off'}
         assert find_discounts('20% discount and 10% off') == {'20% discount', '10% off'}
         # test on real data

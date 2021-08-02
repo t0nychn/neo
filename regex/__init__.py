@@ -34,14 +34,12 @@ def find_freebies(text):
         Matching set of string sequences if discount found, else None.
     """
 
-    # aim is to also return context 20 characters before and after mention of free, gift or voucher
-    # prevent parsing words with 'free' and 'gift' as root (e.g. freedom or gifted) but allow for giftcard
-    pattern1 = r".{0,19}\Wfree\W.{0,19}|.{0,20}voucher.{0,20}"
-    pattern2 = r".{0,20}giftcard.{0,20}|.{0,19}\Wgift\W.{0,19}"
-    result = re.findall(pattern1, text, re.I) + re.findall(pattern2, text, re.I)
+    # aim is to also return context 20 characters before and after mention
+    # prevent parsing words with 'free' and 'gift' as root (e.g. freedom or gifted)
+    pattern = r".{0,19}\Wfree\W.{0,19}|.{0,19}\Wgift\W.{0,19}"
+    result = re.findall(pattern, text, re.I)
 
     if result:
-        # filter for mentions of gluten & range (common word associated with free) and 'gift wrap'
         # create new set of items to be removed (can't remove iteratively since index positions change)
         filter = set()
         # remove duplicates before operating
@@ -51,7 +49,10 @@ def find_freebies(text):
             comp = e.lower()
             if ('gift' and 'wrap') in comp:
                 filter.add(e)
-            elif 'gluten' in comp or 'range' in comp:
+            # filter for mentions of gluten & range (common word associated with free) and 'gift wrap'
+            # also prevent double counting with find_subs (i.e. 'gift voucher' or 'gift subscription')
+            # note that '(x or y or z) in comp' does not work
+            elif 'gluten' in comp or 'range' in comp or 'voucher' in comp or 'subscription' in comp:
                 filter.add(e)
         # remove overlapping values
         result.difference_update(filter)
@@ -59,5 +60,25 @@ def find_freebies(text):
             return result
         else:
             return
+    else:
+        return
+
+
+def find_subs(text):
+    """Identifies subscriptions in form of giftcards and vouchers and returns matching set of cases
+
+    Args:
+        text (str): Text to be parsed
+    
+    Returns:
+        Matching set of string sequences if discount found, else None.
+    """
+
+    # use 'subscri' since it's a root that can cover 'subscription' and 'subscribe'
+    pattern = r".{0,20}giftcard.{0,20}|.{0,20}voucher.{0,20}|.{0,20}subscri.{0,20}|.{0,20}membership.{0,20}"
+    result = re.findall(pattern, text, re.I)
+
+    if result:
+        return set(result)
     else:
         return

@@ -13,16 +13,13 @@ class Tests:
 
     def test_normal_args(self):
         # test for case insensitivity
-        assert find_freebies('GIFTCARD!') == {'GIFTCARD!'}
+        assert find_freebies(' GIFT!') == {' GIFT!'}
         # test for multiple mentions
         assert find_freebies('product free for first month for non-members, and free for two months for subscribers') == {' non-members, and free for two months for ', 'product free for first month for'}
         # test to avoid gluten
         # function may exclude gluten free gifts but hopefully not too many of those
         assert find_freebies('gluten free bread ................. free range egg.......... gluten free range bread') is None
         assert find_freebies('our cafe serves muffins free from gluten') is None
-        # test to find vouchers
-        assert find_freebies('get our new voucher') == {'get our new voucher'}
-        assert find_freebies('see our new gift voucher') == {'see our new gift voucher'}
         # test on real data
         # should be captured with $pytest -rP
         df = pd.read_csv('sites_data/initial.csv', index_col='id')
