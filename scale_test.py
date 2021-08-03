@@ -3,23 +3,50 @@ This is a simple exercise to demonstrate the power of using Celery
 to run functions concurrently. We will use the Eventlet library to
 scale Celery's concurrent processes far beyond the number of processors
 on machine. Eventlet uses greenlets to implement lightweight thread-like
-structures that are scheduled and managed inside the process.
+structures that are scheduled and managed inside the Celery worker as
+child processes.
 
 (Before running first set up the message broker (e.g. Redis) in your .env file.)
 
-First emulate a single-threaded process:
-$ celery -A scale_test worker -P eventlet --concurrency 1
+Simple example using test = 100:
+    First emulate a single-threaded process:
+    $ celery -A scale_test worker -P eventlet --concurrency 1
 
-Then:
-$ celery -A scale_test worker -P eventlet --concurrency 50
+    Then:
+    $ celery -A scale_test worker -P eventlet --concurrency 50
 
-Finally:
-$ celery -A scale_test worker -P eventlet --concurrency 100
+    Finally:
+    $ celery -A scale_test worker -P eventlet --concurrency 100
 
 Note that multi-(green)threading may not produce faster results if we
 do not require the add() function to sleep. But for runtime bottlenecks
 caused by non-CPU intensive tasks, such as waiting for a web response,
 an Eventlet pool is a real treat.
+
+By running a few tests, we can see how cocurrency compares to parallel.
+If we assume a theoretical base time of 10 seconds (delay in add function),
+we can get an estimate for how Eventlet's concurrent process scales as a factor of
+the base runtime.
+
+Results:
+    test = 100 & concurrency = 10 -> 100 secs (10x 1x base)
+    test = 100 & concurrency = 100 -> 10 secs ((1x) 1x base)
+    test = 1,000 & concurrency = 1,000 -> 10 secs (1x base)
+    test = 2,000 & concurrency = 2,000 -> 17 secs (1.7x base)
+    test = 5,000 & concurrency = 5,000 -> 30 secs (3x base)
+    test = 50,000 & concurrency = 50,000 -> 3 mins 56 secs (24x base)
+
+Hence, for a test batch of 100 that takes around 2 minutes to complete at 100 concurrency, 
+we can expect it to take at least 48 minutes if the input size and concurrency are scaled 
+up to 50,000. Contrastingly, we expect true parallelism to maintain the 1x base speed
+no matter the input size. Hence, we see that using green threads fail to achieve parallelism
+at large input sizes. Such is perhaps why the default concurrency in Eventlet is set to 1,000.
+
+Nevertheless, an Eventlet pool managed by Celery is still far more scalable than implementing
+a truly parallel multiprocessing program, which is restricted to the number of processors on
+machine (usually 8). A smart solution may be to run multiple workers in parallel, with each worker
+running its own green threads. In such a way, scaling from 100 to 50,000 inputs will only result 
+in a 3x increase in runtime (50,000/8 = 6,250).
 """
 
 from celery import Celery
@@ -30,6 +57,8 @@ app = Celery('test', broker=config('BROKER_URL'))
 
 counter = 0
 
+test = 2000
+
 @app.task
 def add(x, y):
     print("Sleeping for 10 seconds")
@@ -37,8 +66,8 @@ def add(x, y):
     print(f"{x} + {y} = {str(x+y)}")
     global counter
     counter += 1
-    print(f"Complete: {counter}/100")
+    print(f"Complete: {counter}/{test}")
     
-for i in range(100):
+for i in range(test):
     add.delay(i, i)
     

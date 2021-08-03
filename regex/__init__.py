@@ -90,7 +90,6 @@ def find_subscriptions(text):
 
 class Trinity:
     """Finds regex matches and calculates an overall score for compatibility with CRM product.
-    Defaults to using the three regex modules above.
     
     Use:
         text = "The Answer Is Out There, Neo..."
