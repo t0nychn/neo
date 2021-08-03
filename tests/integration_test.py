@@ -2,7 +2,7 @@
 This test is to determine how well the regex functions work together in the Trinity module
 
 When $ pytest tests is called, this file will use the regex modules to parse the
-data from sites_data/initial.csv and output deals data onto sites_data/parsed.csv
+data from sites_data/initial.csv and output deals data onto sites_data/integration_test.csv
 """
 from regex import *
 import pandas as pd
@@ -21,4 +21,4 @@ df['subsciptions'] = [trin.subs for trin in parsed]
 df.drop('content', axis=1, inplace=True)
 
 # export to csv
-df.to_csv('sites_data/parsed.csv', encoding='utf-8-sig')
+df.to_csv('sites_data/integration_test.csv', encoding='utf-8-sig')

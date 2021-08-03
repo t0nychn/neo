@@ -42,7 +42,7 @@ class New:
 
     Args:
         pattern (str): Regex pattern to match
-        logic (func): Function to filter regex match that returns a boolean value. Default is None.
+        logic (func, optional): Function to filter regex match that returns a boolean value. Default is None.
 
     Attributes:
         patterns (seq): Regex patterns to match in list/set form
