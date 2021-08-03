@@ -14,7 +14,7 @@ def find_discounts(text):
         text (str): Text to be parsed.
     
     Returns:
-        Matching set of string sequences if discount found, else None.
+        Matching set of string sequences if discount found, else empty string.
     """
 
     # remember to account for '£x coff' i.e. coffee
@@ -24,7 +24,7 @@ def find_discounts(text):
     if result:
         return set(result)
     else:
-        return
+        return ''
 
 
 def find_freebies(text):
@@ -35,7 +35,7 @@ def find_freebies(text):
         text (str): Text to be parsed.
     
     Returns:
-        Matching set of string sequences if discount found, else None.
+        Matching set of string sequences if discount found, else empty string.
     """
 
     # aim is to also return context 20 characters before and after mention
@@ -63,9 +63,9 @@ def find_freebies(text):
         if len(result) > 0:
             return result
         else:
-            return
+            return ''
     else:
-        return
+        return ''
 
 
 def find_subscriptions(text):
@@ -75,7 +75,7 @@ def find_subscriptions(text):
         text (str): Text to be parsed.
     
     Returns:
-        Matching set of string sequences if discount found, else None.
+        Matching set of string sequences if discount found, else empty string.
     """
 
     # use 'subscri' since it's a root that can cover 'subscription' and 'subscribe'
@@ -85,7 +85,7 @@ def find_subscriptions(text):
     if result:
         return set(result)
     else:
-        return
+        return ''
 
 
 class Trinity:
@@ -114,14 +114,6 @@ class Trinity:
         self.free = find_freebies(text)
         self.subs = find_subscriptions(text)
 
-    def _len(self, attr):
-        """Private method to deal with nonetype objects if no matches found.
-        
-        More preferable than returning empty set so we have null values in data when put into spreadsheet/database.
-        """
-
-        return (len(attr) if attr else 0)
-
     def score(self):
         """Returns compatibility score for CRM product.
         
@@ -134,4 +126,4 @@ class Trinity:
         • no longer logging score, just using weighted sum to rank later
         """
 
-        return 9 * self._len(self.disc) + 3 * self._len(self.free) + self._len(self.subs)
+        return 9 * len(self.disc) + 3 * len(self.free) + len(self.subs)

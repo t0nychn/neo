@@ -14,14 +14,14 @@ def find_custom(pattern, text):
         text (str): Text to find
     
     Returns:
-        Matching set of string sequences if discount found, else None.      
+        Matching set of string sequences if discount found, else empty string.      
     """
     result = re.findall(pattern, text, re.I)
 
     if result:
         return set(result)
     else:
-        return
+        return ''
 
 
 class New:
@@ -87,6 +87,6 @@ class New:
                 if len(result) > 0:
                     return result
                 else:
-                    return
+                    return ''
         else:
-            return
+            return ''

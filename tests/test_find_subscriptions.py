@@ -4,8 +4,8 @@ import pandas as pd
 
 class Tests:
     def test_bad_args(self):
-        assert find_subscriptions('sdsdvsvsd') is None
-        assert find_subscriptions('23f22g2wiji') is None
+        assert find_subscriptions('sdsdvsvsd') == ''
+        assert find_subscriptions('23f22g2wiji') == ''
     
     def test_special_args(self):
         # test for codec interruptions

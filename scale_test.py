@@ -46,7 +46,7 @@ Nevertheless, an Eventlet pool managed by Celery is still far more scalable than
 a truly parallel multiprocessing program, which is restricted to the number of processors on
 machine (usually 8). A smart solution may be to run multiple workers in parallel, with each worker
 running its own green threads. In such a way, scaling from 100 to 50,000 inputs will only result 
-in a 3x increase in runtime (50,000/8 = 6,250).
+in roughly 3x increase in runtime (50,000/8 = 6,250).
 """
 
 from celery import Celery
@@ -57,7 +57,7 @@ app = Celery('test', broker=config('BROKER_URL'))
 
 counter = 0
 
-test = 2000
+test = 100
 
 @app.task
 def add(x, y):
@@ -70,4 +70,3 @@ def add(x, y):
     
 for i in range(test):
     add.delay(i, i)
-    

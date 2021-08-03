@@ -4,19 +4,19 @@ import pandas as pd
 
 class Tests:
     def test_bad_args(self):
-        assert find_discounts('sdsdvsvsd') is None
-        assert find_discounts('/%%%%') is None
+        assert find_discounts('sdsdvsvsd') == ''
+        assert find_discounts('/%%%%') == ''
     
     def test_special_args(self):
         # test does not return repeat of the same discount
         assert find_discounts('15% off, 15% off') == {'15% off'}
         # test missing numeric parameter
-        assert find_discounts('£ off selected') is None
+        assert find_discounts('£ off selected') == ''
         # test for codec interruptions
         assert find_discounts('£10 â\x80\x93 off selected items') == {'£10 â\x80\x93 off'}
         assert find_discounts('10 â\x80\x93 % â\x80\x93 off  selected items') == {'10 â\x80\x93 % â\x80\x93 off'}
         # test for coffee
-        assert find_discounts('£3 coffee') is None
+        assert find_discounts('£3 coffee') == ''
 
     def test_normal_args(self):
         # test for case insensitivity

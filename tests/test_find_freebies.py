@@ -4,8 +4,8 @@ import pandas as pd
 
 class Tests:
     def test_bad_args(self):
-        assert find_freebies('sdsdvsvsd') is None
-        assert find_freebies('23f22g2wiji') is None
+        assert find_freebies('sdsdvsvsd') == ''
+        assert find_freebies('23f22g2wiji') == ''
     
     def test_special_args(self):
         # test for codec interruptions
@@ -18,8 +18,8 @@ class Tests:
         assert find_freebies('product free for first month for non-members, and free for two months for subscribers') == {' non-members, and free for two months for ', 'product free for first month for'}
         # test to avoid gluten
         # function may exclude gluten free gifts but hopefully not too many of those
-        assert find_freebies('gluten free bread ................. free range egg.......... gluten free range bread') is None
-        assert find_freebies('our cafe serves muffins free from gluten') is None
+        assert find_freebies('gluten free bread ................. free range egg.......... gluten free range bread') == ''
+        assert find_freebies('our cafe serves muffins free from gluten') == ''
         # test on real data
         # should be captured with $pytest -rP
         df = pd.read_csv('sites_data/initial.csv', index_col='id')
