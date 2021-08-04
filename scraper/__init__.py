@@ -31,10 +31,12 @@ class Neo:
         execute: Execute scraper instance.
     """
 
+    # cooldown between pages in secs
+    COOLDOWN = 5
     # limit for number of pages
     PAGE_LIMIT = 15
     # rest time in seconds after 429 response
-    NO_SPAM = 120
+    NO_SPAM = 60
 
     # initialize scraper with href1 (initial (1st) link)
     def __init__(self, href1):
@@ -56,9 +58,7 @@ class Neo:
             set: Set of all links found.
         """
 
-        hrefs = set()
-        for tag in soup.find_all('a', href=True):
-            hrefs.add(tag.get('href'))
+        hrefs = set(soup.find_all('a', href=True))
         return hrefs
 
     def parse(self, href):
@@ -71,24 +71,35 @@ class Neo:
             set: Set of all links in the page.
         """
 
+        # stop if no link loaded
+        if len(href) == 0:
+            return ''
         # account for bad links and prevent scraper following external links
-        if (self.href1 not in href and href[0] != '/') or len(href) < 2:
+        elif (self.href1 not in href and href[0] != '/') or len(href) < 2:
             print(f"Bad/external link: {href}")
+            return ''
         else:
             # account for shortened links
             if self.href1[-1] == '/' and href[0] == '/':
                 href = self.href1 + href[1:]
             elif self.href1[-1] != '/' and href[0] == '/':
                 href = self.href1 + href
-            print(f"Visiting: {href}...")
-            response = requests.get(href, timeout=5)
+            print(f"Visiting: {href}")
+            try:
+                response = requests.get(href, timeout=5)
+            except Exception:
+                print(f"Timed out & moving on: {href}")
+                return ''
             # don't spam
             if int(response.status_code) == 429:
-                print(f"429 response received for {href}\nRetrying in {Neo.NO_SPAM/60} minutes...")
+                print(f"429 response received for {self.href1}\nFreezing this scrape for {Neo.NO_SPAM/60} minutes...")
                 time.sleep(Neo.NO_SPAM)
+                return ''
             # account for bad requests
             elif int(response.status_code) > 400:
                 print(f"Bad request for {href}: {response.status_code}")
+                # end method
+                return ''
             else:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 # call Trinity to parse page and append to results attribute
@@ -105,33 +116,37 @@ class Neo:
                 # return list of links
                 return self.find_href(soup)
 
-
     def execute(self):
         """Executes Neo instance to parse any given website 2 links deep."""
         
         counter = 0
-        for href2 in self.parse(self.href1):
-            # account for links back to home
-            if self.href1 == href2:
-                print(f"Duplicate request: {href2}")
-            counter += 1
-            if counter > Neo.PAGE_LIMIT:
-                print(f'Too many pages at {self.href1}!')
-                # end function
-                return
-            else:
-                # cooldown
-                time.sleep(5)
-                self.parse(href2)
+        try:
+            for href2 in self.parse(self.href1):
+                counter += 1
+                if counter > Neo.PAGE_LIMIT:
+                    print(f'Too many pages at {self.href1}')
+                    # end method
+                    return
+                elif counter == 1:
+                    self.parse(href2)
+                else:
+                    # cooldown
+                    time.sleep(Neo.COOLDOWN)
+                    self.parse(href2)
+        # handle exception to prevent interruptions to pipeline
+        except Exception as e:
+            print(f"Exception encountered for {self.href1}: {e.args}")
+            return
 
 
 class Pipeline(Neo):
     """Construct to save output from Neo to database url in .env file (developed on sqlite3).
+    Uses lazy iterating where Neo only executed when save()/execute() is called.
     
     Use:
         link = 'https://en.wikipedia.org/wiki/The_Matrix'
         data = Pipeline(link, id=1, name='Wikipedia')
-        data.commit()
+        data.save()
     
     Args:
         href1 (str): Initial (1st) link.
@@ -141,7 +156,7 @@ class Pipeline(Neo):
     Attributes:
         href1 (str): Initial (1st) link.
         results (dict): Dictionary of results for each page, able to be turned into DataFrame.
-        main (:obj: 'Table'): SQLAlchemy table object.
+        main (:obj: 'Table'): SQLAlchemy table object. Primary key is link of individual pages.
 
     Methods:
         find_href: Finds all links in a given page.
@@ -176,8 +191,8 @@ class Pipeline(Neo):
         metadata.create_all(self.engine)
 
     def save(self):
-        # quick (but imperfect) check to speed up runtime by not scraping duplicates
-        if self.engine.execute(f"SELECT COUNT(*) FROM main WHERE link = '{self.href1}'").fetchall()[0][0] > 0:
+        # quick check to speed up runtime by not scraping duplicates
+        if self.engine.execute(f"SELECT COUNT(*) FROM main WHERE id = {self.id}").fetchall()[0][0] > 0:
             print(f"Already saved & moving on: {self.href1}")
             # end method
             return
@@ -188,7 +203,7 @@ class Pipeline(Neo):
         r_len = len(results['links'])
         if r_len > 0:
             for i in range(r_len):
-                # try inserting into db except if primary key constraint violated - i.e. link exists
+                # try inserting into db except if error occurs
                 try:
                     link=results['links'][i]
                     stmt = insert(self.main).values(
@@ -201,15 +216,15 @@ class Pipeline(Neo):
                         subscriptions=str(results['subscriptions'][i])
                         )
                     self.engine.execute(stmt)
-                    print(f"Successfully saved: {link}!")
+                    print(f"Successfully saved: {link}")
                 except exc.IntegrityError as e:
-                    print(f"Handled SQL Integrity Error: {e}")
+                    print(f"Encountered SQL integrity error for {stmt}: {e.args}")
                     continue
         else:
             return
 
     def yeet(self, filepath, query='SELECT * FROM main;', index=False):
-        """Extracts items from databse using pandas and writes to csv file.
+        """Extracts items from database using pandas read_sql and exports to csv file.
         
         Args:
             filepath (str): Path to save file.

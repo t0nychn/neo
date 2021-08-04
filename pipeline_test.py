@@ -18,10 +18,10 @@ from decouple import config
 df = pd.read_csv('sites_list/main.csv')
 
 reader = pd.read_csv('sites_list/main.csv', encoding='utf-8', iterator=True)
-df = reader.get_chunk(10).dropna()
+df = reader.get_chunk(100).dropna()
 
 # initiate celery instance
-app = Celery('data_generator', broker=config('BROKER_URL'))
+app = Celery('pipeline_test', broker=config('BROKER_URL'))
 
 # counter for completion (takes into account for bad requests)
 completed = 0
@@ -38,10 +38,11 @@ def scrape(index):
     data.save()
     global completed
     completed += 1
-    print(f"Completed: {row['url']}! ({completed}/{len(df)})")
+    print(f"Completed: {row['url']} ({completed}/{len(df)})")
     if completed == len(df):
         # save to csv
         data.yeet('sites_data/pipeline_test.csv')
+        print("ALL FINISHED!")
     return
 
 
