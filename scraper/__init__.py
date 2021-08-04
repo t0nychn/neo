@@ -162,6 +162,7 @@ class Pipeline(Neo):
         find_href: Finds all links in a given page.
         parse: Parses page and append to results.
         execute: Execute scraper instance.
+        __drop: Drops duplicate scores in each website to shorten data.
         save: Commit scraped data to database.
         yeet: Extracts database values into csv.
     """
@@ -190,6 +191,29 @@ class Pipeline(Neo):
         # generate table (will not override existing)
         metadata.create_all(self.engine)
 
+    def __clean(self, results, targets={'scores'}):
+        """Private method to clean result dict of duplicate values, keeping first of each
+        value instance. Returns a set of index values to iterating over results for unique entries.
+        Value target defaults to 'scores' (assume same score has same data usefulness), and can be altered.
+
+        Args:
+            results (dict): Dictionary of results.
+            targets (sequence, optional): Target columns to clean duplicates. Default is 'scores'.
+
+        Returns:
+            set: Set of index values for unique rows identified in result dictionary.
+        """
+
+        indexes = set()
+        for target in targets:
+            old = results[target]
+            # remove duplicates using set
+            new = set(old)
+            # use set difference to optimize this loop to achieve linear method runtime
+            for score in new.difference(indexes):
+                indexes.add(old.index(score))
+        return indexes
+        
     def save(self):
         # quick check to speed up runtime by not scraping duplicates
         if self.engine.execute(f"SELECT COUNT(*) FROM main WHERE id = {self.id}").fetchall()[0][0] > 0:
@@ -198,22 +222,21 @@ class Pipeline(Neo):
             return
         else:
             self.execute()
-        results = self.results
         # filter to see if we have results
-        r_len = len(results['links'])
+        r_len = len(self.results['links'])
         if r_len > 0:
-            for i in range(r_len):
+            for i in self.__clean(self.results):
                 # try inserting into db except if error occurs
                 try:
-                    link=results['links'][i]
+                    link=self.results['links'][i]
                     stmt = insert(self.main).values(
                         id=self.id, 
                         name=self.name, 
                         link=link,
-                        score=results['scores'][i],
-                        discounts=str(results['discounts'][i]),
-                        freebies=str(results['freebies'][i]),
-                        subscriptions=str(results['subscriptions'][i])
+                        score=self.results['scores'][i],
+                        discounts=str(self.results['discounts'][i]),
+                        freebies=str(self.results['freebies'][i]),
+                        subscriptions=str(self.results['subscriptions'][i])
                         )
                     self.engine.execute(stmt)
                     print(f"Successfully saved: {link}")
