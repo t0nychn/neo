@@ -58,7 +58,7 @@ class Neo:
             set: Set of all links found.
         """
 
-        hrefs = set(soup.find_all('a', href=True))
+        hrefs = set(tag.get('href') for tag in soup.find_all('a', href=True))
         return hrefs
 
     def parse(self, href):
@@ -120,8 +120,9 @@ class Neo:
         """Executes Neo instance to parse any given website 2 links deep."""
         
         counter = 0
+        href2s = self.parse(self.href1)
         try:
-            for href2 in self.parse(self.href1):
+            for href2 in href2s:
                 counter += 1
                 if counter > Neo.PAGE_LIMIT:
                     print(f'Too many pages at {self.href1}')
@@ -162,7 +163,6 @@ class Pipeline(Neo):
         find_href: Finds all links in a given page.
         parse: Parses page and append to results.
         execute: Execute scraper instance.
-        __drop: Drops duplicate scores in each website to shorten data.
         save: Commit scraped data to database.
         yeet: Extracts database values into csv.
     """
@@ -226,7 +226,7 @@ class Pipeline(Neo):
         r_len = len(self.results['links'])
         if r_len > 0:
             for i in self.__clean(self.results):
-                # try inserting into db except if error occurs
+                # try inserting into db except if integrity error occurs
                 try:
                     link=self.results['links'][i]
                     stmt = insert(self.main).values(

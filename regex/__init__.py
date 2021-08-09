@@ -117,13 +117,13 @@ class Trinity:
     def score(self):
         """Returns compatibility score for CRM product.
         
-        Updated score calculation (2021-08-02):
-        • discounts are the most indicative of potential offer so score is weighted 9x that of subs
-        • freebies are more useful than subscriptions so weighted 3x that of subs
+        Updated score calculation (2021-08-09):
+        • discounts are the most indicative of potential offer so score is weighted 10x that of subs
+        • freebies are more useful than subscriptions so weighted 2x that of subs
         • sigma_d is total unique discounts found
         • sigma_f is total unique freeby matches found containing 'free'/'gift'/'voucher' (check out regex package to see additional checks in place)
         • sigma_s is total unique subs found
         • no longer logging score, just using weighted sum to rank later
         """
 
-        return 9 * len(self.disc) + 3 * len(self.free) + len(self.subs)
+        return 10 * len(self.disc) + 2 * len(self.free) + len(self.subs)
