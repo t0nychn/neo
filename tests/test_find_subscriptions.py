@@ -9,7 +9,7 @@ class Tests:
     
     def test_special_args(self):
         # test for codec interruptions
-        assert find_subscriptions('this product is a â\x80\x93 giftcard ') == {'is product is a â\x80\x93 giftcard '}
+        assert find_subscriptions('this product is a â\x80\x93 gift card ') == {'is product is a â\x80\x93 gift card '}
 
     def test_normal_args(self):
         # test for case insensitivity

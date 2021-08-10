@@ -26,7 +26,7 @@ class Neo:
         results (dict): Dictionary of results for each page, able to be turned into DataFrame.
 
     Methods:
-        find_href: Finds all links in a given page.
+        find_hrefs: Finds all links in a given page.
         parse: Parses page and append to results.
         execute: Execute scraper instance.
     """
@@ -36,7 +36,7 @@ class Neo:
     # limit for number of pages
     PAGE_LIMIT = 15
     # rest time in seconds after 429 response
-    NO_SPAM = 60
+    NO_SPAM = 90
 
     # initialize scraper with href1 (initial (1st) link)
     def __init__(self, href1):
@@ -48,17 +48,35 @@ class Neo:
         'subscriptions': []
         }
     
-    def find_href(self, soup):
+    def find_hrefs(self, soup, filter=True):
         """Finds all the links in a site page and returns as a set.
+        Update: filter links at find_href rather than parse.
         
         Args:
             soup (str): Site HTML.
+            filter (bool, optional): Whether to apply filter to hrefs found. Default is True.
         
         Returns:
-            set: Set of all links found.
+            set: Set of all relevant links found.
         """
 
-        hrefs = set(tag.get('href') for tag in soup.find_all('a', href=True))
+        if filter:
+            hrefs = set()
+            for tag in soup.find_all('a', href=True):
+                href = tag.get('href')
+                if len(href) > 2:
+                    # prevent going onto other sites & saving internal id links
+                    if (self.href1 not in href and href[0] != '/') or href[0] == '#':
+                        continue
+                    # filter out irrelevant pages (to increase regex accuracy)
+                    elif 'terms' in href or 'conditions' in href or 'download' in href or 'policy' in href or 'map' in href or 'login' in href or 'privacy' in href:
+                        continue
+                    else:
+                        hrefs.add(href)
+                else:
+                    continue
+        else:
+            hrefs = set(tag.get('href') for tag in soup.find_all('a', href=True))
         return hrefs
 
     def parse(self, href):
@@ -74,12 +92,8 @@ class Neo:
         # stop if no link loaded
         if len(href) == 0:
             return ''
-        # account for bad links and prevent scraper following external links
-        elif (self.href1 not in href and href[0] != '/') or len(href) < 2:
-            print(f"Bad/external link: {href}")
-            return ''
         else:
-            # account for shortened links
+            # account for shortened internal links
             if self.href1[-1] == '/' and href[0] == '/':
                 href = self.href1 + href[1:]
             elif self.href1[-1] != '/' and href[0] == '/':
@@ -114,7 +128,7 @@ class Neo:
                 else:
                     pass
                 # return list of links
-                return self.find_href(soup)
+                return self.find_hrefs(soup)
 
     def execute(self):
         """Executes Neo instance to parse any given website 2 links deep."""
@@ -258,5 +272,7 @@ class Pipeline(Neo):
             None, outputs csv file in filepath location.
         """
 
+        print(f"Yeeting selected data to: {filepath}")
         df = pd.read_sql(query, con=self.engine)
         df.to_csv(filepath, mode='wb', encoding='utf-8-sig', index=index)
+        print("Kobe!")
