@@ -28,13 +28,16 @@ If we assume a theoretical base time of 10 seconds (delay in add function),
 we can get an estimate for how Eventlet's concurrent process scales as a factor of
 the base runtime.
 
-Results:
+Results (runtime including Celery worker setup time):
     test = 100 & concurrency = 10 -> 100 secs (10x 1x base)
     test = 100 & concurrency = 100 -> 10 secs ((1x) 1x base)
     test = 1,000 & concurrency = 1,000 -> 10 secs (1x base)
-    test = 2,000 & concurrency = 2,000 -> 17 secs (1.7x base)
+    test = 2,000 & concurrency = 2,000 -> 17 secs (2x base)
     test = 5,000 & concurrency = 5,000 -> 30 secs (3x base)
+    test = 20,000 & concurrency = 20,000 -> 107 secs (11x base)
     test = 50,000 & concurrency = 50,000 -> 3 mins 56 secs (24x base)
+
+    Average actual concurrency reached during testing is around 2,500
 
 Hence, for a test batch of 100 that takes around 2 minutes to complete at 100 concurrency, 
 we can expect it to take at least 48 minutes if the input size and concurrency are scaled 
@@ -47,13 +50,16 @@ a truly parallel multiprocessing program, which is restricted to the number of p
 machine (usually 8). A smart solution may be to run multiple workers in parallel, with each worker
 running its own green threads. In such a way, scaling from 100 to 50,000 inputs will only result 
 in roughly 3x increase in runtime (50,000/8 = 6,250).
+
+Update 2021-08-11: unable to spawn multiple on Windows machine using celery's multi start command :/
+Will try manual routing to different queues and starting workers in terminal (see routing_test).
 """
 
 from celery import Celery
 from decouple import config
 import time
 
-app = Celery('test', broker=config('BROKER_URL'))
+app = Celery('scale_test', broker=config('BROKER_URL'))
 
 counter = 0
 

@@ -7,7 +7,8 @@ to have enough data with which to write regex tests. Output will be saved to sit
 Then set up Celery worker to run file:
 $ celery -A data_generator worker -P eventlet --concurrency 100
 
---purge flag can be used to discontinue any messages if previous worker interrupted before finishing
+$ celery -A data_generator purge 
+can be used to discontinue any messages if previous worker interrupted before finishing
 """
 
 import pandas as pd

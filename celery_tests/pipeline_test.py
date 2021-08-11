@@ -6,7 +6,8 @@ at sites_data/scrape_test.csv.
 Then set up Celery worker to run file:
 $ celery -A pipeline_test worker -P eventlet --concurrency 100
 
---purge flag can be used to discontinue any messages if previous worker interrupted before finishing
+$ celery -A pipeline_test purge 
+can be used to discontinue any messages if previous worker interrupted before finishing
 """
 
 from scraper import Pipeline
