@@ -24,6 +24,9 @@ df = reader.get_chunk(100).dropna()
 # initiate celery instance
 app = Celery('pipeline_test', broker=config('BROKER_URL'))
 
+# initiate pipeline
+pipe = Pipeline()
+
 # counter for completion (takes into account for bad requests)
 completed = 0
 
@@ -31,18 +34,17 @@ completed = 0
 @app.task
 def scrape(index):
     row = df.iloc[index]
-    data = Pipeline(
+    pipe.etl(
         row['url'], 
         id=int(row['id']),
         name=row['name']
         )
-    data.save()
     global completed
     completed += 1
     print(f"Completed: {row['url']} ({completed}/{len(df)})")
     if completed == len(df):
         # save to csv
-        data.yeet('sites_data/pipeline_test.csv')
+        pipe.yeet('sites_data/pipeline_test.csv')
         print("ALL FINISHED!")
     return
 
@@ -52,7 +54,3 @@ def run():
     for index in range(len(df)):
         # call delay to activate concurrency
         scrape.delay(index)
-
-
-# run process when called in python
-run()

@@ -86,7 +86,7 @@ class Neo:
             href (str): Link to visit.
 
         Returns:
-            set: Set of all links in the page.
+            set: Set of all links in the page if page visited successfully, else empty string.
         """
 
         # stop if no link loaded
@@ -99,21 +99,18 @@ class Neo:
             elif self.href1[-1] != '/' and href[0] == '/':
                 href = self.href1 + href
             print(f"Visiting: {href}")
-            try:
-                response = requests.get(href, timeout=5)
-            except Exception:
-                print(f"Timed out & moving on: {href}")
-                return ''
+            # will raise exception if connection times out
+            response = requests.get(href, timeout=5)
+            status_code = int(response.status_code)
             # don't spam
-            if int(response.status_code) == 429:
-                print(f"429 response received for {self.href1}\nFreezing this scrape for {Neo.NO_SPAM/60} minutes...")
+            if status_code == 429:
+                print(f"429 response received for {href}\nFreezing this scrape for {Neo.NO_SPAM/60} minutes...")
                 time.sleep(Neo.NO_SPAM)
                 return ''
             # account for bad requests
-            elif int(response.status_code) > 400:
-                print(f"Bad request for {href}: {response.status_code}")
+            elif status_code > 400:
                 # end method
-                return ''
+                raise Exception(f"Unreachable: {href}")
             else:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 # call Trinity to parse page and append to results attribute
@@ -131,12 +128,13 @@ class Neo:
                 return self.find_hrefs(soup)
 
     def execute(self):
-        """Executes Neo instance to parse any given website 2 links deep."""
+        """Executes Neo instance to parse any given website 2 links deep & update results attribute."""
         
         counter = 0
-        href2s = self.parse(self.href1)
-        try:
-            for href2 in href2s:
+        # any exceptions at first parse will be recorded by Celery flower as failed task (useful for calculating how many sites visited)
+        for href2 in self.parse(self.href1):
+            # if first parse successful then handle exceptions from secondary links
+            try:
                 counter += 1
                 if counter > Neo.PAGE_LIMIT:
                     print(f'Too many pages at {self.href1}')
@@ -148,51 +146,39 @@ class Neo:
                     # cooldown
                     time.sleep(Neo.COOLDOWN)
                     self.parse(href2)
-        # handle exception to prevent interruptions to pipeline
-        except Exception as e:
-            print(f"Exception encountered for {self.href1}: {e.args}")
-            return
+            # handle exceptions & continue through list
+            except Exception as e:
+                print(f"Exception encountered for {href2}: {e.args}")
+                continue
 
 
-class Pipeline(Neo):
-    """Construct to save output from Neo to database url in .env file (developed on sqlite3).
-    Uses lazy iterating where Neo only executed when save()/execute() is called.
+
+class Pipeline:
+    """Construct to save scraper output to database.
+    Initiation establishes a connection to the database location specified as DB_URI in .env file.
+    Developed & tested on SQLite3.
     
     Use:
         link = 'https://en.wikipedia.org/wiki/The_Matrix'
-        data = Pipeline(link, id=1, name='Wikipedia')
-        data.save()
+        pipe = Pipeline()
+        pipe.etl(link, id=1, name='Wikipedia')
+        pipe.yeet('saved_data.csv')
     
     Args:
-        href1 (str): Initial (1st) link.
-        id (int): Internal ID (not primary key).
-        name (str): Name of website.
+        None.
     
     Attributes:
-        href1 (str): Initial (1st) link.
-        results (dict): Dictionary of results for each page, able to be turned into DataFrame.
-        main (:obj: 'Table'): SQLAlchemy table object. Primary key is link of individual pages.
+        engine (:obj: database engine): SQLAlchemy engine.
+        main (:obj: database table): SQLAlchemy table object. Primary key is link of individual pages.
 
     Methods:
-        find_href: Finds all links in a given page.
-        parse: Parses page and append to results.
-        execute: Execute scraper instance.
-        save: Commit scraped data to database.
-        yeet: Extracts database values into csv.
+        etl: Executes scraper and saves results to database.
+        yeet: Queries database and exports query results to csv.
     """
 
-    def __init__(self, href1, id=None, name=None):
-        # check params before initiating
-        if isinstance(href1, str) and isinstance(id, int) and isinstance(name, str):
-            pass
-        else:
-            raise ValueError("Please specify args in correct format")
-        Neo.__init__(self, href1)
+    def __init__(self):
         self.engine = create_engine(config('DB_URI'))
-        self.id = id
-        self.name = name
         metadata = MetaData()
-
         # declare table
         self.main = Table('main', metadata,
             Column('id', Integer),
@@ -202,7 +188,7 @@ class Pipeline(Neo):
             Column('discounts', String),
             Column('freebies', String),
             Column('subscriptions', String))
-        # generate table (will not override existing)
+        # generates table (will not override existing)
         metadata.create_all(self.engine)
 
     def __clean(self, results, targets={'scores'}):
@@ -228,32 +214,50 @@ class Pipeline(Neo):
                 indexes.add(old.index(score))
         return indexes
         
-    def save(self):
+    def etl(self, link, id=0, name='website', scraper=Neo):
+        """Extracts information from web link using Neo-like scraper and saves to database
+        Note that scraper must be polymorphic/inherit from Neo.
+        
+        Args:
+            link (str): Link to website. 
+            id (int, optional): ID for website (not primary key in database since multiple pages share same ID). Default is 0.
+            name (str, optional): Name of website. Default is 'website'.
+            scraper (:obj: module, optional): Scraper module to load. Default is Neo.
+        
+        Returns:
+            None, saves scraped data to database file.
+        """
+        # check params before initiating
+        if isinstance(link, str) and isinstance(id, int) and isinstance(name, str):
+            pass
+        else:
+            raise ValueError("Please specify args in correct format")
         # quick check to speed up runtime by not scraping duplicates
-        if self.engine.execute(f"SELECT COUNT(*) FROM main WHERE id = {self.id}").fetchall()[0][0] > 0:
-            print(f"Already saved & moving on: {self.href1}")
+        if self.engine.execute(f"SELECT COUNT(*) FROM main WHERE id = {id}").fetchall()[0][0] > 0:
+            print(f"Already saved & moving on: {link}")
             # end method
             return
         else:
-            self.execute()
+            scrape = scraper(link)
+            scrape.execute()
         # filter to see if we have results
-        r_len = len(self.results['links'])
+        r_len = len(scrape.results['links'])
         if r_len > 0:
             for i in self.__clean(self.results):
                 # try inserting into db except if integrity error occurs
                 try:
-                    link=self.results['links'][i]
+                    href = scrape.results['links'][i]
                     stmt = insert(self.main).values(
-                        id=self.id, 
-                        name=self.name, 
-                        link=link,
-                        score=self.results['scores'][i],
-                        discounts=str(self.results['discounts'][i]),
-                        freebies=str(self.results['freebies'][i]),
-                        subscriptions=str(self.results['subscriptions'][i])
+                        id=id, 
+                        name=name, 
+                        link=href,
+                        score=scrape.results['scores'][i],
+                        discounts=str(scrape.results['discounts'][i]),
+                        freebies=str(scrape.results['freebies'][i]),
+                        subscriptions=str(scrape.results['subscriptions'][i])
                         )
                     self.engine.execute(stmt)
-                    print(f"Successfully saved: {link}")
+                    print(f"Successfully saved: {href}")
                 except exc.IntegrityError as e:
                     print(f"Encountered SQL integrity error for {stmt}: {e.args}")
                     continue
