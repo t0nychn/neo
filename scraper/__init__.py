@@ -243,7 +243,7 @@ class Pipeline:
         # filter to see if we have results
         r_len = len(scrape.results['links'])
         if r_len > 0:
-            for i in self.__clean(self.results):
+            for i in self.__clean(scrape.results):
                 # try inserting into db except if integrity error occurs
                 try:
                     href = scrape.results['links'][i]

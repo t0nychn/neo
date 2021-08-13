@@ -15,7 +15,7 @@ parsed = df['content'].apply(lambda x: Trinity(x))
 df['score'] = [trin.score() for trin in parsed]
 df['discounts'] = [trin.disc for trin in parsed]
 df['freebies'] = [trin.free for trin in parsed]
-df['subsciptions'] = [trin.subs for trin in parsed]
+df['subscriptions'] = [trin.subs for trin in parsed]
 
 # drop contents column to replicate real csv file
 df.drop('content', axis=1, inplace=True)

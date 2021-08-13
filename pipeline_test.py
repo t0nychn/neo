@@ -16,8 +16,6 @@ from celery import Celery
 from decouple import config
 
 
-df = pd.read_csv('sites_list/main.csv')
-
 reader = pd.read_csv('sites_list/main.csv', encoding='utf-8', iterator=True)
 df = reader.get_chunk(100).dropna()
 
