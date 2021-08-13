@@ -1,5 +1,7 @@
 # Neo: supersonic scraping
 
+![Alt Text](https://i.gifer.com/4yF.gif)
+
 Neo is a super-fast, super-lightweight scraper capable of handling around 300
 requests at once. It's built using the Celery distributed task queue framework, and configured to run on Windows OS (unsupported by Celery). 
 
