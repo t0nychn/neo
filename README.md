@@ -16,10 +16,10 @@ First set up the message broker and databse URI in your .env file. The productio
 
 To spin up worker processes for the production app:
 ```
-$ celery -A production worker -P eventlet -c 12000 -n worker1 -Q worker1
-$ celery -A production worker -P eventlet -c 12000 -n worker2 -Q worker2
-$ celery -A production worker -P eventlet -c 12000 -n worker3 -Q worker3
-$ celery -A production worker -P eventlet -c 12000 -n worker4 -Q worker4
+$ celery -A production worker -P eventlet -c 10000 -n worker1 -Q worker1
+$ celery -A production worker -P eventlet -c 10000 -n worker2 -Q worker2
+$ celery -A production worker -P eventlet -c 10000 -n worker3 -Q worker3
+$ celery -A production worker -P eventlet -c 10000 -n worker4 -Q worker4
 ```
 Note that any arbitrarily large number can be passed into the concurrency flag -c, since real concurrency per worker will only be a couple hundred to 1,000.
 
