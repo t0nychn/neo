@@ -1,7 +1,6 @@
 # Neo: supersonic scraping ⚡
 
-Neo is a super-fast, super-lightweight scraper capable of handling around 300
-requests at once. It's managed using the Celery distributed task queue framework, and configured to run on Windows OS (unsupported by Celery). 
+Neo is a super-fast, super-lightweight scraper capable of handling around 300 requests at once. It's managed using the Celery distributed task queue framework, and configured to run on Windows OS (unsupported by Celery). 
 
 Neo scales using green threads by using Eventlet as Celery's execution pool, which also happens to be the only way for Celery to work on Windows. Unlike with the default pre-fork execution pool that spawns child processes, Eventlet threads are managed within a single worker process, so manual queue routing can be used to split the task size between a few workers to achieve multiprocessing.
 
@@ -21,7 +20,7 @@ $ celery -A production worker -P eventlet -c 10000 -n worker2 -Q worker2
 $ celery -A production worker -P eventlet -c 10000 -n worker3 -Q worker3
 $ celery -A production worker -P eventlet -c 10000 -n worker4 -Q worker4
 ```
-Note that concurrency set using flag -c is more of a limit than a guideline. Runtime concurrency depends on OS and other processes.
+Note that concurrency set using flag -c is more of a limit than a guideline. Runtime concurrency depends on OS and other processes. Observed concurrency during development range from 100 to 2,500.
 
 Run using:
 ```
