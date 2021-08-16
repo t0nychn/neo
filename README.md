@@ -21,7 +21,7 @@ $ celery -A production worker -P eventlet -c 10000 -n worker2 -Q worker2
 $ celery -A production worker -P eventlet -c 10000 -n worker3 -Q worker3
 $ celery -A production worker -P eventlet -c 10000 -n worker4 -Q worker4
 ```
-Note that any arbitrarily large number can be passed into the concurrency flag -c, since real concurrency per worker will only be a couple hundred to 1,000.
+Note that concurrency set using flag -c is more of a limit than a guideline. Runtime concurrency depends on OS and other processes.
 
 Run using:
 ```
