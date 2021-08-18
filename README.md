@@ -4,7 +4,7 @@ Neo is a super-fast, super-lightweight scraper capable of handling around 300 re
 
 Neo scales using green threads by using Eventlet as Celery's execution pool, which also happens to be the only way for Celery to work on Windows. Unlike with the default pre-fork execution pool that spawns child processes, Eventlet threads are managed within a single worker process, so manual queue routing can be used to split the task size between a few workers to achieve multiprocessing.
 
-Built for an input size of 57k+ as a commercial data project, Neo combines with a regex parser called Trinity to find compatibility of site pages with CRM products and produces a ranking score for the first 16 pages of input websites. Neo's observed latency speedup is 315x during production on a quad core machine, reducing average latency from 29s to 9.2ms. For context, this meant a reduction in production runtime from 472h to 1.5h.
+Built for an input size of 57k+ as a commercial data project, Neo combines with a regex parser called Trinity to find compatibility of site pages with CRM products and produces a ranking score for the first 16 pages of input websites (with 5s cooldown between requests). Neo's observed latency speedup is 315x during production on a quad core machine, reducing average latency from 29s to 9.2ms. For context, this meant a reduction in production runtime from 472h to 1.5h.
 
 Code references The Matrix for bonus points.
 
